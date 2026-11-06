@@ -1,0 +1,36 @@
+#rc-personal, #rc-admin { max-width: 760px; }
+.rc-form { display: grid; grid-template-columns: minmax(130px, max-content) minmax(0, 420px); gap: 8px 14px; align-items: center; margin-top: 8px; }
+.rc-form label { color: var(--color-text-maxcontrast); }
+.rc-form input[type=url], .rc-form input[type=text], .rc-form input[type=password], .rc-form input[type=number], .rc-form textarea { width: 100%; margin: 0; }
+.rc-form .rc-presets, .rc-form .rc-actions, .rc-form .rc-msg, .rc-form .rc-check { grid-column: 1 / -1; }
+.rc-presets:empty { display: none; }
+.rc-chip { border-radius: var(--border-radius-pill, 999px) !important; padding: 2px 14px !important; min-height: 30px !important; margin: 0 6px 0 0 !important; }
+.rc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.rc-msg { margin: 6px 0 0; min-height: 1.2em; }
+.rc-msg:empty { min-height: 0; margin: 0; }
+.rc-ok { color: var(--color-success-text, var(--color-success)); }
+.rc-err { color: var(--color-error-text, var(--color-error)); }
+.rc-sub { color: var(--color-text-maxcontrast); font-weight: normal; }
+.rc-empty { color: var(--color-text-maxcontrast); padding: 6px 0; }
+.rc-card { border: 1px solid var(--color-border); border-radius: var(--border-radius-large, 10px); padding: 12px 14px; margin: 10px 0 16px; background: var(--color-main-background); }
+.rc-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+.rc-card-buttons, .rc-item-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.rc-card-buttons button, .rc-item-buttons button { margin: 0; }
+.rc-list { list-style: none; margin: 0; padding: 0; }
+.rc-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--color-border-dark, var(--color-border)); }
+.rc-item:last-child { border-bottom: 0; }
+.rc-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rc-status { font-size: 0.92em; color: var(--color-text-maxcontrast); }
+.rc-status.rc-err { color: var(--color-error-text, var(--color-error)); }
+.rc-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex: none; margin-right: 6px; vertical-align: -2px; }
+.rc-badge { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; font-size: 0.85em; background: var(--color-background-dark); color: var(--color-text-maxcontrast); }
+.rc-danger.rc-armed { background: var(--color-error) !important; color: #fff !important; border-color: var(--color-error) !important; }
+.rc-inline { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.rc-inline input { margin: 0; min-width: 220px; }
+.rc-chooser { border: 1px solid var(--color-border); border-radius: var(--border-radius-large, 10px); padding: 10px 14px; margin-top: 12px; }
+.rc-choose .rc-item label { flex: 1; cursor: pointer; }
+.rc-extra:empty { display: none; }
+@media (max-width: 600px) {
+	.rc-form { grid-template-columns: 1fr; }
+	.rc-item { flex-wrap: wrap; }
+}
