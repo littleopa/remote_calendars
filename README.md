@@ -35,7 +35,7 @@ Deleting the calendar in the Calendar app ends the connection as well.
 
 ## Requirements
 
-Nextcloud 30 – 35, system cron recommended.
+Nextcloud 35, system cron recommended.
 
 ## License
 

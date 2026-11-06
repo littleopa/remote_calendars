@@ -47,7 +47,7 @@ Kalender-App als normaler, **bearbeitbarer** Kalender.
 	<repository type="git">https://github.com/littleopa/remote_calendars.git</repository>
 	<dependencies>
 		<php min-version="8.1"/>
-		<nextcloud min-version="30" max-version="35"/>
+		<nextcloud min-version="35" max-version="35"/>
 	</dependencies>
 	<background-jobs>
 		<job>OCA\RemoteCalendars\BackgroundJob\SyncJob</job>
