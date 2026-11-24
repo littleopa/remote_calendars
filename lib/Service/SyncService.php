@@ -16,7 +16,8 @@ use Psr\Log\LoggerInterface;
  * State per object (table extkal_objects): local uri + local etag, remote href + remote etag.
  *  push: local objects whose etag differs from the mapping → PUT (If-Match), missing → DELETE.
  *  pull: remote hrefs whose etag differs → calendar-multiget → write locally; vanished → delete locally.
- * Conflicts (412) are resolved in favour of the remote server.
+ * Conflicts (412) are resolved in favour of the remote server: the mapping is marked STALE, the
+ * push phase leaves a stale object alone, and the next pull overwrites the local copy.
  */
 class SyncService {
 	/** true while this app writes to the local calendar – listeners must ignore those events */
@@ -24,6 +25,13 @@ class SyncService {
 
 	private const PROPS_ETAG = '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:getetag/><d:resourcetype/></d:prop></d:propfind>';
 	private const MULTIGET_BATCH = 50;
+	/**
+	 * remote_etag of a mapping whose remote object changed (412) or must be restored from the
+	 * server (403/405). Never a real ETag (those are quoted). Push skips such objects, so nothing
+	 * is ever written without If-Match over a remote change; pull sees an ETag mismatch and
+	 * re-fetches the object.
+	 */
+	private const STALE = '!stale';
 
 	public function __construct(
 		private Store $store,
@@ -164,6 +172,10 @@ class SyncService {
 			if ($obj === null) {
 				continue;
 			}
+			if ($m !== null && $m['remote_etag'] === self::STALE) {
+				$stats['conflicts']++; // waits for the pull, which brings the remote version
+				continue;
+			}
 			$headers = ['Content-Type' => 'text/calendar; charset=utf-8'];
 			if ($m !== null) {
 				$href = $m['remote_href'];
@@ -185,7 +197,11 @@ class SyncService {
 				throw new AuthError();
 			}
 			if ($s >= 200 && $s < 300) {
-				$remoteEtag = ($r['etag'] !== '' && !str_starts_with($r['etag'], 'W/')) ? $r['etag'] : '';
+				$remoteEtag = self::strongEtag($r['etag']);
+				if ($remoteEtag === '') {
+					// no ETag in the PUT answer: ask for it, so the next push can still send If-Match
+					$remoteEtag = $this->remoteEtag($href, $auth, $timeout);
+				}
 				if ($m !== null) {
 					$this->store->updateMapping((int)$m['id'], ['remote_etag' => $remoteEtag, 'local_etag' => $etag]);
 				} else {
@@ -193,8 +209,8 @@ class SyncService {
 				}
 				$stats['pushed']++;
 			} elseif ($s === 412 && $m !== null) {
-				// changed on the server meanwhile → server wins on next pull
-				$this->store->updateMapping((int)$m['id'], ['remote_etag' => '']);
+				// changed on the server meanwhile → server wins on the next pull, no retry before that
+				$this->store->updateMapping((int)$m['id'], ['remote_etag' => self::STALE]);
 				$stats['conflicts']++;
 			} elseif ($s === 403 || $s === 405) {
 				// server refuses writing this entry → restore server state
@@ -214,6 +230,12 @@ class SyncService {
 				$stats['skipped']++;
 				continue;
 			}
+			if ($m['remote_etag'] === self::STALE) {
+				// changed on the server → the remote version wins, the next pull brings it back
+				$this->store->updateMapping((int)$m['id'], ['local_uri' => '']);
+				$stats['conflicts']++;
+				continue;
+			}
 			$headers = $m['remote_etag'] !== '' ? ['If-Match' => $m['remote_etag']] : [];
 			$r = $this->dav->request('DELETE', $m['remote_href'], $auth, null, $headers, $timeout);
 			$s = $r['status'];
@@ -225,7 +247,7 @@ class SyncService {
 				$stats['pushed']++;
 			} elseif (in_array($s, [403, 405, 412], true)) {
 				// not allowed or changed on server → bring it back on next pull
-				$this->store->updateMapping((int)$m['id'], ['local_uri' => '', 'remote_etag' => '']);
+				$this->store->updateMapping((int)$m['id'], ['local_uri' => '', 'remote_etag' => self::STALE]);
 				$stats[$s === 412 ? 'conflicts' : 'skipped']++;
 			} else {
 				$stats['failed']++;
@@ -236,11 +258,34 @@ class SyncService {
 
 	private function revertLocal(int $calendarId, string $uri, ?array $m, array &$stats): void {
 		if ($m !== null) {
-			$this->store->updateMapping((int)$m['id'], ['remote_etag' => '']); // re-fetch from server
+			$this->store->updateMapping((int)$m['id'], ['remote_etag' => self::STALE]); // re-fetch from server
 		} else {
 			$this->writeLocal(fn () => $this->cal->deleteCalendarObject($calendarId, $uri, CalDavBackend::CALENDAR_TYPE_CALENDAR, true));
 		}
 		$stats['skipped']++;
+	}
+
+	private static function strongEtag(string $etag): string {
+		return ($etag !== '' && !str_starts_with($etag, 'W/')) ? $etag : '';
+	}
+
+	/** Current strong ETag of one remote object, '' if the server does not tell. */
+	private function remoteEtag(string $href, Credentials $auth, int $timeout): string {
+		try {
+			$r = $this->dav->request('PROPFIND', $href, $auth, self::PROPS_ETAG, [
+				'Depth' => '0',
+				'Content-Type' => 'application/xml; charset=utf-8',
+			], $timeout);
+		} catch (UserError) {
+			return '';
+		}
+		if ($r['status'] !== 207) {
+			return '';
+		}
+		foreach (D::parseMultistatus($r['body'], $r['url']) as $resp) {
+			return self::strongEtag(D::text($resp['props'], '{DAV:}getetag'));
+		}
+		return '';
 	}
 
 	private function writeLocal(callable $fn): mixed {
