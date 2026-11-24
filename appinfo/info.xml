@@ -36,7 +36,7 @@ Kalender-App als normaler, **bearbeitbarer** Kalender.
 - Benachrichtigung, wenn die Anmeldung nicht mehr klappt.
 - Admins können vorgeschlagene Server-Adressen hinterlegen.
 	]]></description>
-	<version>1.0.1</version>
+	<version>1.0.2</version>
 	<licence>agpl</licence>
 	<author mail="nextcloud-apps@kleineropa.de" homepage="https://github.com/littleopa/remote_calendars">Phillip Jürgensen</author>
 	<namespace>RemoteCalendars</namespace>
