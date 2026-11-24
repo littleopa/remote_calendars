@@ -37,7 +37,7 @@ class Store {
 		return null;
 	}
 
-	public function createAccount(string $uid, string $url, string $username, string $password): int {
+	public function createAccount(string $uid, string $url, string $username, #[\SensitiveParameter] string $password): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->insert('extkal_accounts')->values([
 			'user_id' => $qb->createNamedParameter($uid),
@@ -49,15 +49,15 @@ class Store {
 		return $qb->getLastInsertId();
 	}
 
-	public function setPassword(int $accountId, string $password): void {
+	public function setPassword(int $accountId, #[\SensitiveParameter] string $password): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update('extkal_accounts')->set('password', $qb->createNamedParameter($this->crypto->encrypt($password)))
 			->where($qb->expr()->eq('id', $qb->createNamedParameter($accountId, IQueryBuilder::PARAM_INT)))->executeStatement();
 	}
 
 	/** @return array{0:string,1:string} */
-	public function credentials(array $account): array {
-		return [$account['username'], $this->crypto->decrypt((string)$account['password'])];
+	public function credentials(array $account): Credentials {
+		return new Credentials((string)$account['username'], $this->crypto->decrypt((string)$account['password']));
 	}
 
 	public function deleteAccount(int $id): void {

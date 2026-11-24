@@ -134,7 +134,7 @@ class SyncService {
 	}
 
 	// ------------------------------------------------------------------ push
-	private function push(array $binding, array $auth, array &$stats, int $timeout): void {
+	private function push(array $binding, Credentials $auth, array &$stats, int $timeout): void {
 		$calendarId = (int)$binding['calendar_id'];
 		$bid = (int)$binding['id'];
 		$readonly = (int)$binding['readonly'] === 1;
@@ -254,7 +254,7 @@ class SyncService {
 	}
 
 	// ------------------------------------------------------------------ pull
-	private function pull(array $binding, array $auth, array &$stats): void {
+	private function pull(array $binding, Credentials $auth, array &$stats): void {
 		$calendarId = (int)$binding['calendar_id'];
 		$bid = (int)$binding['id'];
 		$collection = rtrim($binding['remote_url'], '/') . '/';
@@ -324,7 +324,7 @@ class SyncService {
 	}
 
 	/** @return array<string, array{0:string,1:string}> key => [calendar-data, etag] */
-	private function fetch(string $collection, array $auth, array $hrefs): array {
+	private function fetch(string $collection, Credentials $auth, array $hrefs): array {
 		$xml = '<?xml version="1.0" encoding="utf-8"?><c:calendar-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop>';
 		foreach ($hrefs as $href) {
 			$xml .= '<d:href>' . htmlspecialchars((string)parse_url($href, PHP_URL_PATH), ENT_XML1) . '</d:href>';

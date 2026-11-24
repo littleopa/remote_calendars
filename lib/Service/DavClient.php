@@ -25,15 +25,15 @@ class DavClient {
 	}
 
 	/**
-	 * @param array{0:string,1:string} $auth
+	 * Credentials are passed as an object so they never appear in a logged stack trace.
 	 * @return array{status:int, body:string, etag:string, url:string}
 	 */
-	public function request(string $method, string $url, array $auth, ?string $body = null, array $headers = [], int $timeout = 30): array {
+	public function request(string $method, string $url, Credentials $auth, ?string $body = null, array $headers = [], int $timeout = 30): array {
 		$origHost = strtolower((string)parse_url($url, PHP_URL_HOST));
 		for ($i = 0; $i < 6; $i++) {
 			$resolve = self::checkUrl($url, $this->allowLocal());
 			$opts = [
-				'auth' => $auth,
+				'auth' => $auth->toAuthOption(),
 				'headers' => $headers + ['User-Agent' => 'Nextcloud-RemoteCalendars/1.0'],
 				'timeout' => $timeout,
 				'connect_timeout' => min(10, $timeout),
@@ -253,7 +253,7 @@ class DavClient {
 		return rtrim(rawurldecode($path), '/');
 	}
 
-	public function propfind(string $url, array $auth, int $depth, string $xml): array {
+	public function propfind(string $url, Credentials $auth, int $depth, string $xml): array {
 		$r = $this->request('PROPFIND', $url, $auth, $xml, [
 			'Depth' => (string)$depth,
 			'Content-Type' => 'application/xml; charset=utf-8',
@@ -262,7 +262,7 @@ class DavClient {
 		return $r;
 	}
 
-	public function report(string $url, array $auth, string $xml): array {
+	public function report(string $url, Credentials $auth, string $xml): array {
 		$r = $this->request('REPORT', $url, $auth, $xml, [
 			'Depth' => '1',
 			'Content-Type' => 'application/xml; charset=utf-8',

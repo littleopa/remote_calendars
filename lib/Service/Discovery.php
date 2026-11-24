@@ -30,9 +30,8 @@ class Discovery {
 	/**
 	 * @return list<array{url:string,name:string,color:string,components:string[],writable:bool}>
 	 */
-	public function discover(string $url, string $user, string $password): array {
+	public function discover(string $url, Credentials $auth): array {
 		$url = self::normalizeUrl($url);
-		$auth = [$user, $password];
 
 		$r = $this->dav->propfind($url, $auth, 0, self::PROPS_START);
 		if ($r['status'] === 401) {

@@ -4,6 +4,7 @@ namespace OCA\RemoteCalendars\Controller;
 
 use OCA\RemoteCalendars\AppInfo\Application;
 use OCA\RemoteCalendars\Service\AccountService;
+use OCA\RemoteCalendars\Service\Credentials;
 use OCA\RemoteCalendars\Service\Discovery;
 use OCA\RemoteCalendars\Service\UserError;
 use OCP\AppFramework\Controller;
@@ -64,19 +65,19 @@ class ApiController extends Controller {
 
 	#[NoAdminRequired]
 	#[UserRateLimit(limit: 20, period: 300)]
-	public function discover(string $url = '', string $username = '', string $password = ''): JSONResponse {
+	public function discover(string $url = '', string $username = '', #[\SensitiveParameter] string $password = ''): JSONResponse {
 		return $this->run(function () use ($url, $username, $password) {
 			if (trim($url) === '' || $username === '' || $password === '') {
 				throw new UserError('Please fill in address, username and password.');
 			}
-			return ['calendars' => $this->accounts->markBound($this->uid(), $this->discovery->discover($url, $username, $password))];
+			return ['calendars' => $this->accounts->markBound($this->uid(), $this->discovery->discover($url, new Credentials($username, $password)))];
 		});
 	}
 
 	#[NoAdminRequired]
 	#[UserRateLimit(limit: 20, period: 300)]
-	public function connect(string $url = '', string $username = '', string $password = '', array $calendars = []): JSONResponse {
-		return $this->run(fn () => ['results' => $this->translateErrors($this->accounts->connect($this->uid(), $url, $username, $password, $calendars))]);
+	public function connect(string $url = '', string $username = '', #[\SensitiveParameter] string $password = '', array $calendars = []): JSONResponse {
+		return $this->run(fn () => ['results' => $this->translateErrors($this->accounts->connect($this->uid(), $url, new Credentials($username, $password), $calendars))]);
 	}
 
 	#[NoAdminRequired]
@@ -93,7 +94,7 @@ class ApiController extends Controller {
 
 	#[NoAdminRequired]
 	#[UserRateLimit(limit: 10, period: 300)]
-	public function accountPassword(int $id, string $password = ''): JSONResponse {
+	public function accountPassword(int $id, #[\SensitiveParameter] string $password = ''): JSONResponse {
 		return $this->run(fn () => $this->accounts->changePassword($this->uid(), $id, $password));
 	}
 

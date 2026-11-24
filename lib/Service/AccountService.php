@@ -55,9 +55,10 @@ class AccountService {
 	 * Connects the selected calendars. The list is re-discovered on the server, so only
 	 * calendars that really belong to this account can be connected.
 	 */
-	public function connect(string $uid, string $url, string $username, string $password, array $selectedUrls, ?int $accountId = null): array {
+	public function connect(string $uid, string $url, Credentials $auth, array $selectedUrls, ?int $accountId = null): array {
 		$url = Discovery::normalizeUrl($url);
-		$found = $this->discovery->discover($url, $username, $password);
+		$username = $auth->username();
+		$found = $this->discovery->discover($url, $auth);
 		$wanted = array_flip(array_map(fn ($u) => D::key((string)$u), $selectedUrls));
 
 		if ($accountId !== null) {
@@ -65,9 +66,9 @@ class AccountService {
 		} else {
 			$account = $this->store->findAccount($uid, $url, $username);
 		}
-		$id = $account !== null ? (int)$account['id'] : $this->store->createAccount($uid, $url, $username, $password);
+		$id = $account !== null ? (int)$account['id'] : $this->store->createAccount($uid, $url, $username, $auth->password());
 		if ($account !== null && $accountId === null) {
-			$this->store->setPassword($id, $password);
+			$this->store->setPassword($id, $auth->password());
 		}
 
 		$results = [];
@@ -99,19 +100,17 @@ class AccountService {
 
 	public function discoverForAccount(string $uid, int $accountId): array {
 		$a = $this->store->account($accountId, $uid) ?? throw new UserError('Account not found.');
-		[$u, $p] = $this->store->credentials($a);
-		return $this->markBound($uid, $this->discovery->discover($a['url'], $u, $p));
+		return $this->markBound($uid, $this->discovery->discover($a['url'], $this->store->credentials($a)));
 	}
 
 	public function addToAccount(string $uid, int $accountId, array $urls): array {
 		$a = $this->store->account($accountId, $uid) ?? throw new UserError('Account not found.');
-		[$u, $p] = $this->store->credentials($a);
-		return $this->connect($uid, $a['url'], $u, $p, $urls, $accountId);
+		return $this->connect($uid, $a['url'], $this->store->credentials($a), $urls, $accountId);
 	}
 
-	public function changePassword(string $uid, int $accountId, string $password): void {
+	public function changePassword(string $uid, int $accountId, #[\SensitiveParameter] string $password): void {
 		$a = $this->store->account($accountId, $uid) ?? throw new UserError('Account not found.');
-		$this->discovery->discover($a['url'], $a['username'], $password); // throws on wrong password
+		$this->discovery->discover($a['url'], new Credentials((string)$a['username'], $password)); // throws on wrong password
 		$this->store->setPassword($accountId, $password);
 		foreach ($this->store->bindingsOfAccount($accountId) as $b) {
 			$this->store->updateBinding((int)$b['id'], ['error_since' => 0, 'last_error' => null]);
